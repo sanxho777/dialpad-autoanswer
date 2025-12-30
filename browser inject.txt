@@ -1,0 +1,64 @@
+ const pollInterval = 50; // Check every 50ms
+
+  console.log('[AUTO-ANSWER] Starting auto-answer monitoring...');
+
+  const tryAnswerCall = () => {
+    const acceptButtons = [
+      ...Array.from(document.querySelectorAll('button')).filter(btn =>
+        btn.textContent.includes('Accept') &&
+        btn.getAttribute('aria-label') !== 'Accept'
+      ),
+      ...Array.from(document.querySelectorAll('[role="button"]')).filter(btn =>
+        btn.textContent.includes('Accept')
+      )
+    ];
+
+    for (const button of acceptButtons) {
+      const rect = button.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        console.log('[AUTO-ANSWER] ✅ INCOMING CALL DETECTED! Answering now...');
+        button.click();
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const pollIntervalId = setInterval(() => {
+    tryAnswerCall();
+  }, pollInterval);
+
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.addedNodes.length > 0) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const text = node.textContent || '';
+            if (text.includes('Incoming call') || text.includes('Accept')) {
+              console.log('[AUTO-ANSWER] 🚨 DOM change detected - checking for call...');
+              setTimeout(tryAnswerCall, 10);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: false
+  });
+
+  console.log('[AUTO-ANSWER] 🤖 Auto-answer system ACTIVE!');
+  console.log('[AUTO-ANSWER] Monitoring every ' + pollInterval + 'ms + DOM changes');
+
+  window.autoAnswerSystem = {
+    pollIntervalId,
+    observer,
+    stop: () => {
+      clearInterval(pollIntervalId);
+      observer.disconnect();
+      console.log('[AUTO-ANSWER] ⛔ Auto-answer system STOPPED');
+    }
+  };
